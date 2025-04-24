@@ -1,10 +1,9 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 import { User } from "../models/User.model.js";
-import { uploadOnCloudinary } from "../utils/cloudinary.js";
+import { updatedOnCloudinary, uploadOnCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken";
-import { use } from "framer-motion/client";
 
 const generateAccessAndRefreshTokens = async (userId) => {
   try {
@@ -196,7 +195,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
   //req.body mai se refresh tocken lo agar match kiya tho access token generate karo aur pass karo
 
   const incomingRefreshTocken =
-    (await res.cookie.refreshToken) || req.body.refreshToken;
+    req.cookies.refreshToken || req.body.refreshToken;
 
   if (!incomingRefreshTocken) {
     throw new ApiError(401, "unauthorized request");
@@ -222,17 +221,20 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
       secure: true,
     };
 
-    const { accessToken, newrefreshToken } =
-      await generateAccessAndRefreshTokens(user._id);
+    const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(
+      user._id
+    );
+
+    console.log(refreshToken);
 
     return res
       .status(200)
       .cookie("accessToken", accessToken, options)
-      .cookie("refreshToken", newrefreshToken, options)
+      .cookie("refreshToken", refreshToken, options)
       .json(
         new ApiResponse(200, {
           accessToken,
-          refreshToken: newrefreshToken,
+          refreshToken: refreshToken,
         })
       );
   } catch (error) {
@@ -240,4 +242,143 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
   }
 });
 
-export { registerUser, loginUser, logoutUser, refreshAccessToken };
+const changeCurrentPassword = asyncHandler(async (req, res) => {
+  const { oldPassword, newpassword } = req.body;
+
+  const user = await User.findById(req.user?._id);
+  const isPasswordValid = await user.isPasswordCorrect(oldPassword);
+
+  if (!isPasswordValid) {
+    throw new ApiError(401, "invalid old password");
+  }
+
+  user.password = newpassword;
+  await user.save({ validateBeforeSave: false });
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, {}, "password changed successfully"));
+});
+
+const getCurrentUser = asyncHandler(async (req, res) => {
+  return res
+  .status(200)
+  .json(new ApiResponse(
+    200, 
+    req.user, 
+    "current user fetched successfully"
+  ));
+});
+
+const updatedAccountDetails = asyncHandler(async (req, res) => {
+  const { fullName, email } = req.body;
+  if (!fullName && !email) {
+    throw new ApiError(400, "all feilds are required");
+  }
+
+  const user = await User.findByIdAndUpdate(
+    req.user?._id,
+    {
+      $set: {
+        fullName: fullName,
+        email: email,
+      },
+    },
+    {
+      new: true,
+    }
+  ).select("-password -refreshToken");
+
+  return res
+  .status(200)
+  .json(new ApiResponse(
+    200,
+    user,
+    "account details updated successfully"
+  ))
+});
+
+
+
+const updatedUserAvatar = asyncHandler(async (req, res) => {
+  const avatarLocalPath=req.file?.path
+  const user=req.user
+  const oldAvatarUrl=user.avatar
+
+
+  if(!avatarLocalPath){
+    throw new ApiError(400, "Avatar image is required ");
+  }
+  if(!oldAvatarUrl){
+    throw new ApiError(500, "can not find old avatar image");
+  }
+
+  const newAvatar= await updatedOnCloudinary(avatarLocalPath,oldAvatarUrl)
+
+  if(!newAvatar){
+    throw new ApiError(500, "issue while updating Avatar");
+  }
+
+  user.avatar=newAvatar.url
+  await user.save({validateBeforeSave:false})
+
+    
+
+
+  return res
+  .status(200)
+  .json(new ApiResponse(
+    200,
+    newAvatar.url,
+    "Avatar updated successfully"
+  ))
+});
+
+
+const updatedUserCoverImage = asyncHandler(async (req, res) => {
+  const coverImageLocalPath=req.file?.path
+  const user=req.user
+  const oldCoverImageUrl=user.coverImage ||''
+
+
+  if(!coverImageLocalPath){
+    throw new ApiError(400, "CoverImage image is required ");
+  }
+  // if(!oldCoverImageUrl){
+  //   throw new ApiError(500, "can not find old avatar image");
+  // }
+
+  const newCoverImage= await updatedOnCloudinary(coverImageLocalPath,oldCoverImageUrl)
+
+  if(!newCoverImage){
+    throw new ApiError(500, "issue while updating Cover Image");
+  }
+
+  user.coverImage=newCoverImage.url
+  await user.save({validateBeforeSave:false})
+
+    
+
+
+  return res
+  .status(200)
+  .json(new ApiResponse(
+    200,
+    newCoverImage.url,
+    "cover image updated successfully"
+  ))
+});
+
+
+
+export {
+  registerUser,
+  loginUser,
+  logoutUser,
+  refreshAccessToken,
+  updatedAccountDetails,
+  getCurrentUser,
+  changeCurrentPassword,
+  updatedUserAvatar,
+  updatedUserCoverImage,
+};

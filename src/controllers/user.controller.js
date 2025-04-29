@@ -21,7 +21,7 @@ const generateAccessAndRefreshTokens = async (userId) => {
   } catch (error) {
     throw new ApiError(
       500,
-      "something went wrong while generating refersh and access token"
+      "Something went wrong while generating refresh and access tokens"
     );
   }
 };
@@ -48,7 +48,7 @@ const registerUser = asyncHandler(async (req, res) => {
       return field?.trim() === "";
     })
   ) {
-    throw new ApiError(400, "all fields are required");
+    throw new ApiError(400, "All fields are required");
   }
 
   const existingUser = await User.findOne({
@@ -137,7 +137,7 @@ const loginUser = asyncHandler(async (req, res) => {
   const isPasswordValid = await user.isPasswordCorrect(password);
 
   if (!isPasswordValid) {
-    throw new ApiError(401, "Invalid user credentials ");
+    throw new ApiError(401, "Invalid old password");
   }
 
   const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(
@@ -198,27 +198,27 @@ const logoutUser = asyncHandler(async (req, res) => {
 const refreshAccessToken = asyncHandler(async (req, res) => {
   //req.body mai se refresh tocken lo agar match kiya tho access token generate karo aur pass karo
 
-  const incomingRefreshTocken =
+  const incomingRefreshToken =
     req.cookies.refreshToken || req.body.refreshToken;
 
-  if (!incomingRefreshTocken) {
-    throw new ApiError(401, "unauthorized request");
+  if (!incomingRefreshToken) {
+    throw new ApiError(401, "Unauthorized request");
   }
 
   try {
     const decodedToken = jwt.verify(
-      incomingRefreshTocken,
+      incomingRefreshToken,
       process.env.REFRESH_TOKEN_SECRET
     );
 
     const user = await User.findById(decodedToken?._id);
 
     if (!user) {
-      throw new ApiError(401, "Invalid refresh tocken");
+      throw new ApiError(401, "Invalid refresh token");
     }
 
-    if (incomingRefreshTocken !== user?.refreshToken) {
-      throw new ApiError(401, "refresh tocken is expired or used ");
+    if (incomingRefreshToken !== user?.refreshToken) {
+      throw new ApiError(401, "Refresh token is expired or used");
     }
     const options = {
       httpOnly: true,
@@ -247,16 +247,16 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
 });
 
 const changeCurrentPassword = asyncHandler(async (req, res) => {
-  const { oldPassword, newpassword } = req.body;
+  const { oldPassword, newPassword } = req.body;
 
   const user = await User.findById(req.user?._id);
   const isPasswordValid = await user.isPasswordCorrect(oldPassword);
 
   if (!isPasswordValid) {
-    throw new ApiError(401, "invalid old password");
+    throw new ApiError(401, "Invalid old password");
   }
 
-  user.password = newpassword;
+  user.password = newPassword;
   await user.save({ validateBeforeSave: false });
 
   return res
@@ -273,7 +273,7 @@ const getCurrentUser = asyncHandler(async (req, res) => {
 const updatedAccountDetails = asyncHandler(async (req, res) => {
   const { fullName, email } = req.body;
   if (!fullName && !email) {
-    throw new ApiError(400, "all feilds are required");
+    throw new ApiError(400, "All fields are required");
   }
 
   const user = await User.findByIdAndUpdate(
@@ -430,7 +430,7 @@ const getWatchHistory = asyncHandler(async (req, res) => {
   const user = await User.aggregate([
     {
       $match: {
-        _id: mongoose.Types.ObjectId.createFromHexString(req.user._id),
+        _id: new mongoose.Types.ObjectId(req.user._id),
       },
     },
     {

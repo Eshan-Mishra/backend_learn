@@ -12,7 +12,7 @@ const subcriptionSchema=new Schema(
             ref:"User"
         }
     },
-    { timestapms: true }
+    { timestamps: true }
 );
 
 

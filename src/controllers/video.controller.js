@@ -153,7 +153,7 @@ const getAllVideos = asyncHandler(async (req, res) => {
   });
 
   // 6️⃣ Pagination apply karna using aggregatePaginate plugin
-  const videoAggregate = await Video.aggregate(pipeline); // Aggregate query banayi
+  const videoAggregate =  Video.aggregate(pipeline); // Aggregate query banayi
   const options = {
     page: parseInt(page, 10), // Page number
     limit: parseInt(limit, 10), // Limit per page

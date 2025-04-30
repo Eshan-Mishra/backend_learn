@@ -1,6 +1,7 @@
 import { v2 as cloudinary } from "cloudinary";
 import fs from "fs";
 import { ApiError } from "./ApiError.js";
+import { extractPublicId } from "./extractPublicId.js";
 
 // Configuration
 cloudinary.config({
@@ -9,11 +10,7 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-function extractPublicId(Url) {
-  const regex = /upload\/v\d+\/(.+?)\.(?:jpg|jpeg|png|webp|gif|bmp|tiff)$/i;
-  const match = Url.match(regex);
-  return match ? match[1] : null;
-}
+
 
 const uploadOnCloudinary = async (localFilePath) => {
   try {
